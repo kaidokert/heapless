@@ -5,6 +5,7 @@ use core::{
     mem,
     num::NonZeroU32,
     ops, slice,
+    iter::FusedIterator
 };
 
 use hash32::{BuildHasherDefault, FnvHasher};
@@ -1328,6 +1329,19 @@ impl<K, V, const N: usize> Iterator for IntoIter<K, V, N> {
     }
 }
 
+impl<K, V, const N: usize> DoubleEndedIterator for IntoIter<K, V, N> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if !self.entries.is_empty() {
+            let bucket = self.entries.remove(0);
+            Some((bucket.key, bucket.value))
+        } else {
+            None
+        }
+    }
+}
+
+impl<K,V, const N: usize> FusedIterator for IntoIter<K, V, N> {}
+
 impl<K, V, S, const N: usize> IntoIterator for IndexMap<K, V, S, N> {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V, N>;
@@ -1373,6 +1387,16 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
     }
 }
 
+impl<'a, K, V> DoubleEndedIterator for Iter<'a, K, V> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter
+            .next_back()
+            .map(|bucket| (&bucket.key, &bucket.value))
+    }
+}
+
+impl<'a, K, V> FusedIterator for Iter<'a, K, V> {}
+
 impl<'a, K, V> Clone for Iter<'a, K, V> {
     fn clone(&self) -> Self {
         Self {
@@ -1399,6 +1423,16 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     }
 }
 
+impl<'a, K, V> DoubleEndedIterator for IterMut<'a, K, V> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter
+            .next_back()
+            .map(|bucket| (&bucket.key, &mut bucket.value))
+    }
+}
+
+impl<'a, K, V> FusedIterator for IterMut<'a, K, V> {}
+
 /// An iterator over the keys of a [`IndexMap`].
 ///
 /// This `struct` is created by the [`keys`](IndexMap::keys) method on [`IndexMap`]. See its
@@ -1414,6 +1448,14 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
         self.iter.next().map(|bucket| &bucket.key)
     }
 }
+
+impl<'a, K, V> DoubleEndedIterator for Keys<'a, K, V> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter.next_back().map(|bucket| &bucket.key)
+    }
+}
+
+impl<'a, K, V> FusedIterator for Keys<'a, K, V> {}
 
 /// An iterator over the values of a [`IndexMap`].
 ///
@@ -1431,6 +1473,14 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
     }
 }
 
+impl<'a, K, V> DoubleEndedIterator for Values<'a, K, V> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter.next_back().map(|bucket| &bucket.value)
+    }
+}
+
+impl<'a, K, V> FusedIterator for Values<'a, K, V> {}
+
 /// A mutable iterator over the values of a [`IndexMap`].
 ///
 /// This `struct` is created by the [`values_mut`](IndexMap::values_mut) method on [`IndexMap`]. See its
@@ -1446,6 +1496,14 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
         self.iter.next().map(|bucket| &mut bucket.value)
     }
 }
+
+impl<'a, K, V> DoubleEndedIterator for ValuesMut<'a, K, V> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter.next_back().map(|bucket| &mut bucket.value)
+    }
+}
+
+impl<'a, K, V> FusedIterator for ValuesMut<'a, K, V> {}
 
 fn hash_with<K, S>(key: &K, build_hasher: &S) -> HashValue
 where
@@ -1600,6 +1658,17 @@ mod tests {
         let clone = src.clone();
         for (k, v) in clone.into_iter() {
             assert_eq!(v, *src.get(k).unwrap());
+        }
+    }
+
+    #[test]
+    fn into_iter_rev() {
+        let mut src: FnvIndexMap<_, _, 4> = FnvIndexMap::new();
+        src.insert("k1", "v1").unwrap();
+        src.insert("k2", "v2").unwrap();
+        let clone = src.clone();
+        for (k, v) in clone.into_iter().rev() {
+
         }
     }
 

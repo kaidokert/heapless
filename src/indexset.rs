@@ -2,6 +2,7 @@ use core::{
     borrow::Borrow,
     fmt,
     hash::{BuildHasher, Hash},
+    iter::FusedIterator,
 };
 
 use hash32::{BuildHasherDefault, FnvHasher};
@@ -620,6 +621,14 @@ impl<'a, T> Iterator for Iter<'a, T> {
         self.iter.next().map(|(k, _)| k)
     }
 }
+
+impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter.next_back().map(|(k, _)| k)
+    }
+}
+
+impl<'a,T> FusedIterator for Iter<'a, T> {}
 
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Self {
